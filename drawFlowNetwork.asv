@@ -1,0 +1,49 @@
+function drawFlowNetwork(flowMap, stationLocs, showDistance)
+    % Set up geoaxes
+    figure('Color', 'w', 'Position', [100, 100, 1000, 800]);
+    ax = geoaxes;
+    geobasemap(ax, 'satellite');
+    hold(ax, 'on');
+    set(ax, 'FontSize', 12);
+    title(ax, 'Hydrological Flow Network (with Mekong Basin)', ...
+        'FontSize', 14, 'FontWeight', 'bold');
+
+    % Colors
+    arrowColor = 'cyan';
+    stationColor = [1, 0.5, 0];
+
+    % Plot stations and flow lines (unchanged)
+    keys = flowMap.keys;
+    for i = 1:length(keys)
+        upstream = keys{i};
+        if ~isKey(stationLocs, upstream), continue; end
+        upLoc = stationLocs(upstream);
+
+        for downstream = flowMap(upstream)
+            if ~isKey(stationLocs, downstream{1}), continue; end
+            downLoc = stationLocs(downstream{1});
+            geoplot(ax, [upLoc(1), downLoc(1)], [upLoc(2), downLoc(2)], ...
+                '-', 'Color', arrowColor, 'LineWidth', 1.2);
+        end
+    end
+    for i = 1:length(keys)
+        upstream = keys{i};
+        if ~isKey(stationLocs, upstream), continue; end
+        upLoc = stationLocs(upstream);
+        offsetLat = 0
+        offsetLon = 0
+        if ismember(upstream, {'Ban Tha Ton'})
+            offsetLat = 0.1;
+            offsetLon = -0.1;
+        elseif ismember(upstream, {'Ban Tha Ton'})
+
+        end
+
+        geoscatter(ax, upLoc(1), upLoc(2), 60, 'Marker', 'o', ...
+            'MarkerFaceColor', stationColor, 'MarkerEdgeColor', 'k', 'LineWidth', 0.8);
+        text(ax, upLoc(1) + offsetLat, upLoc(2) + offsetLon, upstream, 'Color', 'White', 'FontSize', 10);
+    end
+
+    geolimits(ax, [8 22], [98 110]);
+    exportgraphics(gcf, 'hydro_flow_geo.pdf', 'ContentType', 'vector');
+end
