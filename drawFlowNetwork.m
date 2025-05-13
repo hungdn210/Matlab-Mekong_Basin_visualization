@@ -1,60 +1,59 @@
 function drawFlowNetwork(flowMap, stationLocs, showDistance)
-    figure('Color', 'w', 'Position', [100, 100, 1000, 800]);
-    ax = axes;
-    axis equal;
+    % Set up geoaxes
+    figure('Color', 'w', 'Position', [100, 100, 800, 800]);
+
+    ax = geoaxes;
+    geobasemap(ax, 'satellite');
     hold(ax, 'on');
+    load('mekong_basin_mat.mat');  % Load lat/lon outline from .mat
+    geoplot(ax, lat, lon, '-', ...
+        'Color', [0.4 0.7 1], 'LineWidth', 1.5);
     set(ax, 'FontSize', 12);
-    title(ax, 'Hydrological Flow Network (Mekong Basin Only)', ...
+    title(ax, 'Hydrological Flow Network (with Mekong Basin)', ...
         'FontSize', 14, 'FontWeight', 'bold');
-
-    % Load outline
-    load('mekong_basin_mat.mat');  % contains lat, lon
-    plot(ax, lon, lat, '-', 'Color', [0.4 0.7 1], 'LineWidth', 1.5);
-
     % Colors
-    arrowColor = 'cyan';
+    arrowColor = 'yellow';
     stationColor = [1, 0.5, 0];
-
-    % Draw connections
+    % Plot stations and flow lines (unchanged)
     keys = flowMap.keys;
     for i = 1:length(keys)
         upstream = keys{i};
         if ~isKey(stationLocs, upstream), continue; end
         upLoc = stationLocs(upstream);
-
         for downstream = flowMap(upstream)
             if ~isKey(stationLocs, downstream{1}), continue; end
             downLoc = stationLocs(downstream{1});
-            plot(ax, [upLoc(2), downLoc(2)], [upLoc(1), downLoc(1)], ...
-                '-', 'Color', arrowColor, 'LineWidth', 1.2);
-            scatter(ax, downLoc(2), downLoc(1), 30, '^', ...
-                'MarkerFaceColor', arrowColor, 'MarkerEdgeColor', 'none');
+            geoplot(ax, [upLoc(1), downLoc(1)], [upLoc(2), downLoc(2)], ...
+                '-', 'Color', arrowColor, 'LineWidth', 2);
+
+            arrowSize = 0.12;  % smaller arrow
+            dirVec = [downLoc(2) - upLoc(2), downLoc(1) - upLoc(1)];
+            normDir = dirVec / norm(dirVec);
+            perp = [-normDir(2), normDir(1)] * arrowSize / 2;
+            
+            tip = [downLoc(2), downLoc(1)];
+            base1 = tip - normDir * arrowSize + perp;
+            base2 = tip - normDir * arrowSize - perp;
+            
+            % Extract lat/lon
+            tipLat = tip(2); tipLon = tip(1);
+            b1Lat = base1(2); b1Lon = base1(1);
+            b2Lat = base2(2); b2Lon = base2(1);
+            
+            % Draw open arrowhead
+            geoplot(ax, [tipLat, b1Lat], [tipLon, b1Lon], '-', 'Color', arrowColor, 'LineWidth', 2);
+            geoplot(ax, [tipLat, b2Lat], [tipLon, b2Lon], '-', 'Color', arrowColor, 'LineWidth', 2);
+
         end
     end
-
-    % Plot stations
     for i = 1:length(keys)
         upstream = keys{i};
         if ~isKey(stationLocs, upstream), continue; end
         upLoc = stationLocs(upstream);
-        offsetLat = 0;
-        offsetLon = 0.1;
-
-        if ismember(upstream, {'Ban Tha Ton'}), offsetLat = 0.15; offsetLon = -0.4;
-        elseif ismember(upstream, {'Ban Tha Mai Liam'}), offsetLat = -0.1; offsetLon = -0.2;
-        elseif ismember(upstream, {'Vientiane KM4'}), offsetLat = 0.15; offsetLon = -0.3;
-        elseif ismember(upstream, {'Ban Nong Kiang'}), offsetLat = 0.1; offsetLon = -0.3;
-        elseif ismember(upstream, {'Chiang Khan'}), offsetLat = -0.05; offsetLon = -0.05;
-        elseif ismember(upstream, {'Ban Huai Khayuong'}), offsetLat = -0.1; offsetLon = -1;
-        end
-
-        scatter(ax, upLoc(2), upLoc(1), 60, 'o', ...
+        geoscatter(ax, upLoc(1), upLoc(2), 60, 'Marker', 'o', ...
             'MarkerFaceColor', stationColor, 'MarkerEdgeColor', 'k', 'LineWidth', 0.8);
-        text(upLoc(2) + offsetLon, upLoc(1) + offsetLat, upstream, ...
-            'Color', 'black', 'FontSize', 12);  % black text on white background
+        text(ax, upLoc(1), upLoc(2), upstream, 'Color', 'White', 'FontSize', 14); %'FontWeight','bold');
     end
-
-    xlabel('Longitude'); ylabel('Latitude');
-    box on;
-    exportgraphics(gcf, 'hydro_flow_clean.pdf', 'ContentType', 'vector');
+    geolimits(ax, [8 22], [98 110]);
+    exportgraphics(gcf, 'hydro_flow_geo.pdf', 'ContentType', 'vector');
 end
